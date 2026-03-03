@@ -41,7 +41,8 @@ RUN pip install --upgrade pip setuptools wheel \
         cinrad_data \
         vanadis
 
-ENV ESMPY_PATH=/opt/esmpy
+ENV ESMPY_PATH=/opt/esmpy \
+    ESMPY_BRIDGE_PATH=/opt/esmpy-bridge
 
 COPY --from=mambaorg/micromamba:latest /usr/bin/micromamba /usr/local/bin/micromamba
 
@@ -49,6 +50,17 @@ RUN micromamba create -y -p "${ESMPY_PATH}" -c conda-forge \
         "python=3.10" \
         esmpy \
     && pip install --prefer-binary "xesmf==0.8.10" \
+    && mkdir -p "${ESMPY_BRIDGE_PATH}" \
+    && for name in esmpy ESMF ESMF.py; do \
+        if [ -e "${ESMPY_PATH}/lib/python3.10/site-packages/${name}" ]; then \
+            cp -a "${ESMPY_PATH}/lib/python3.10/site-packages/${name}" "${ESMPY_BRIDGE_PATH}/"; \
+        fi; \
+    done \
+    && if [ ! -e "${ESMPY_BRIDGE_PATH}/esmpy" ] \
+        && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF" ] \
+        && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF.py" ]; then \
+        echo "esmpy bridge package not found" >&2; exit 1; \
+    fi \
     && micromamba clean --all --yes
 
 FROM python:3.10-slim-bookworm
@@ -61,7 +73,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MPLBACKEND=Agg \
     MPLCONFIGDIR=/tmp/matplotlib \
     XDG_CACHE_HOME=/tmp/.cache \
-    PYTHONPATH=/opt/esmpy/lib/python3.10/site-packages \
+    PYTHONPATH=/opt/esmpy-bridge \
     LD_LIBRARY_PATH=/opt/esmpy/lib \
     VENV_PATH=/opt/venv \
     PATH=/opt/venv/bin:${PATH}
@@ -78,6 +90,7 @@ RUN apt-get update \
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /opt/esmpy /opt/esmpy
+COPY --from=builder /opt/esmpy-bridge /opt/esmpy-bridge
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
