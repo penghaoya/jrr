@@ -41,15 +41,18 @@ RUN pip install --upgrade pip setuptools wheel \
         cinrad_data \
         vanadis
 
+RUN pip install --prefer-binary "xesmf==0.8.10"
+
+FROM mambaorg/micromamba:latest AS esmpy-builder
+
+USER root
+
 ENV ESMPY_PATH=/opt/esmpy \
     ESMPY_BRIDGE_PATH=/opt/esmpy-bridge
-
-COPY --from=mambaorg/micromamba:latest /usr/bin/micromamba /usr/local/bin/micromamba
 
 RUN micromamba create -y -p "${ESMPY_PATH}" -c conda-forge \
         "python=3.10" \
         esmpy \
-    && pip install --prefer-binary "xesmf==0.8.10" \
     && mkdir -p "${ESMPY_BRIDGE_PATH}" \
     && for name in esmpy ESMF ESMF.py; do \
         if [ -e "${ESMPY_PATH}/lib/python3.10/site-packages/${name}" ]; then \
@@ -89,8 +92,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /opt/esmpy /opt/esmpy
-COPY --from=builder /opt/esmpy-bridge /opt/esmpy-bridge
+COPY --from=esmpy-builder /opt/esmpy /opt/esmpy
+COPY --from=esmpy-builder /opt/esmpy-bridge /opt/esmpy-bridge
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
