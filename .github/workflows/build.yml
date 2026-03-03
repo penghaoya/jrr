@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: jrr
+  IMAGE_NAME: jrr_v2
 
 permissions:
   contents: read
