@@ -48,7 +48,8 @@ FROM mambaorg/micromamba:latest AS esmpy-builder
 USER root
 
 ENV ESMPY_PATH=/opt/esmpy \
-    ESMPY_BRIDGE_PATH=/opt/esmpy-bridge
+    ESMPY_BRIDGE_PATH=/opt/esmpy-bridge \
+    ESMPY_RUNTIME_LIB_PATH=/opt/esmpy-runtime-lib
 
 RUN micromamba create -y -p "${ESMPY_PATH}" -c conda-forge \
         "python=3.10" \
@@ -64,6 +65,9 @@ RUN micromamba create -y -p "${ESMPY_PATH}" -c conda-forge \
         && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF.py" ]; then \
         echo "esmpy bridge package not found" >&2; exit 1; \
     fi \
+    && mkdir -p "${ESMPY_RUNTIME_LIB_PATH}" \
+    && cp -a "${ESMPY_PATH}/lib/." "${ESMPY_RUNTIME_LIB_PATH}/" \
+    && find "${ESMPY_RUNTIME_LIB_PATH}" -maxdepth 1 -name 'libpython*.so*' -exec rm -f {} + \
     && micromamba clean --all --yes
 
 FROM python:3.10-slim-bookworm
@@ -77,7 +81,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MPLCONFIGDIR=/tmp/matplotlib \
     XDG_CACHE_HOME=/tmp/.cache \
     PYTHONPATH=/opt/esmpy-bridge \
-    LD_LIBRARY_PATH=/opt/esmpy/lib \
+    LD_LIBRARY_PATH=/opt/esmpy-runtime-lib \
     VENV_PATH=/opt/venv \
     PATH=/opt/venv/bin:${PATH}
 
@@ -95,6 +99,7 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=esmpy-builder /opt/esmpy /opt/esmpy
 COPY --from=esmpy-builder /opt/esmpy-bridge /opt/esmpy-bridge
+COPY --from=esmpy-builder /opt/esmpy-runtime-lib /opt/esmpy-runtime-lib
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN /opt/venv/bin/python -c 'import sys, xesmf; assert "conda-forge" not in sys.version, sys.version'

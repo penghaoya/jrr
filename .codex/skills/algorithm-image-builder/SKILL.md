@@ -112,6 +112,7 @@ docker run --rm your-image:test /opt/python-3.10.13/bin/python -c 'import numpy,
 - 先区分“镜像问题”和“数据问题”。
   `ModuleNotFoundError` 多半是镜像依赖缺失。
   `FileNotFoundError`、`PermissionError` 往往是挂载路径、配置路径或宿主机权限问题。
+- ModuleNotFoundError 你只需要解决包缺失，无需关注其他错误，我只是验证依赖导入是否成功。
 - 先区分“第三方包缺失”和“项目内模块缺失”。
   `import data_reader_sst` 这类报错，常常不是 `pip install` 能解决，而是代码文件根本没挂进容器。
 - 不要只看 Dockerfile 静态内容。
