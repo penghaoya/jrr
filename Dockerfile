@@ -19,7 +19,7 @@ RUN apt-get update \
         proj-data \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python -m venv "${VENV_PATH}"
+RUN python -m venv --copies "${VENV_PATH}"
 
 ENV PATH="${VENV_PATH}/bin:${PATH}"
 
@@ -40,7 +40,7 @@ RUN pip install --upgrade pip setuptools wheel \
         "xarray<2025.0" \
         cinrad_data \
         vanadis
-
+        
 RUN pip install --prefer-binary "xesmf==0.8.10"
 
 FROM mambaorg/micromamba:latest AS esmpy-builder
@@ -91,10 +91,13 @@ RUN apt-get update \
         proj-data \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=builder /usr/local /usr/local
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=esmpy-builder /opt/esmpy /opt/esmpy
 COPY --from=esmpy-builder /opt/esmpy-bridge /opt/esmpy-bridge
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN /opt/venv/bin/python -c 'import sys, xesmf; assert "conda-forge" not in sys.version, sys.version'
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && mkdir -p /logs /opt/python-3.10.13/bin /opt/conda/bin /opt/conda/condabin \
