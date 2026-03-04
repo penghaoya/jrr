@@ -60,10 +60,19 @@ RUN micromamba create -y -p "${ESMPY_PATH}" -c conda-forge \
             cp -a "${ESMPY_PATH}/lib/python3.10/site-packages/${name}" "${ESMPY_BRIDGE_PATH}/"; \
         fi; \
     done \
+    && for dist in "${ESMPY_PATH}"/lib/python3.10/site-packages/esmpy-*.dist-info; do \
+        if [ -e "${dist}" ]; then \
+            cp -a "${dist}" "${ESMPY_BRIDGE_PATH}/"; \
+        fi; \
+    done \
     && if [ ! -e "${ESMPY_BRIDGE_PATH}/esmpy" ] \
         && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF" ] \
         && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF.py" ]; then \
         echo "esmpy bridge package not found" >&2; exit 1; \
+    fi \
+    && if [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF.py" ] \
+        && [ ! -e "${ESMPY_BRIDGE_PATH}/ESMF" ]; then \
+        printf '%s\n' 'from esmpy import *' > "${ESMPY_BRIDGE_PATH}/ESMF.py"; \
     fi \
     && mkdir -p "${ESMPY_RUNTIME_LIB_PATH}" \
     && cp -a "${ESMPY_PATH}/lib/." "${ESMPY_RUNTIME_LIB_PATH}/" \
